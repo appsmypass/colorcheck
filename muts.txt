@@ -1,0 +1,707 @@
+@@ u16 is assembled with the wrong shift
+-     return ([int]$Bytes[$Offset] -shl 8) -bor [int]$Bytes[$Offset + 1]
++     return ([int]$Bytes[$Offset] -shl 4) -bor [int]$Bytes[$Offset + 1]
+@@ u16 reads its two bytes little endian
+-     return ([int]$Bytes[$Offset] -shl 8) -bor [int]$Bytes[$Offset + 1]
++     return ([int]$Bytes[$Offset + 1] -shl 8) -bor [int]$Bytes[$Offset]
+@@ u24 drops its top byte
+-     return ([int]$Bytes[$Offset] -shl 16) -bor ([int]$Bytes[$Offset + 1] -shl 8) -bor [int]$Bytes[$Offset + 2]
++     return ([int]$Bytes[$Offset + 1] -shl 8) -bor [int]$Bytes[$Offset + 2]
+@@ u32 top byte lands in the wrong place
+-     $v = $v -bor ([uint32]$Bytes[$Offset] -shl 24)
++     $v = $v -bor ([uint32]$Bytes[$Offset] -shl 23)
+@@ u32 loses its second byte
+-     $v = $v -bor ([uint32]$Bytes[$Offset + 1] -shl 16)
++     $v = $v -bor ([uint32]$Bytes[$Offset + 1] -shl 17)
+@@! tripwire: the u32 accumulator is seeded with [int] instead of [uint32] (PowerShell's -bor promotes it back, so nothing changes)
+-     $v = [uint32]0
+-     $v = $v -bor ([uint32]$Bytes[$Offset] -shl 24)
++     $v = [int]0
++     $v = $v -bor ([uint32]$Bytes[$Offset] -shl 24)
+@@ the high half of a 64 bit value is misplaced
+-     return ([uint64]$hi -shl 32) -bor [uint64]$lo
++     return ([uint64]$hi -shl 31) -bor [uint64]$lo
+@@ a 64 bit read takes its low half from the wrong offset
+-     $lo = Read-UInt32BE -Bytes $Bytes -Offset ($Offset + 4)
++     $lo = Read-UInt32BE -Bytes $Bytes -Offset ($Offset + 8)
+@@ a negative offset is accepted by the 16 bit reader
+-     if ($Offset -lt 0) { throw (New-ParseError -Stage 'read' -Message "negative offset $Offset") }
+-     if ($Offset + 2 -gt $Bytes.Length) {
++     if ($false) { throw (New-ParseError -Stage 'read' -Message "negative offset $Offset") }
++     if ($Offset + 2 -gt $Bytes.Length) {
+@@ the 16 bit reader runs one byte past the buffer
+-     if ($Offset + 2 -gt $Bytes.Length) {
++     if ($Offset + 2 -gt ($Bytes.Length + 1)) {
+@@ the 32 bit reader runs past the buffer
+-     if ($Offset + 4 -gt $Bytes.Length) {
+-         throw (New-ParseError -Stage 'read' -Message "want 4 bytes at $Offset, have $($Bytes.Length)")
+-     }
+-     # Built as [uint32] because a 32 bit box size with the high bit set is a
++     if ($Offset + 4 -gt ($Bytes.Length + 1)) {
++         throw (New-ParseError -Stage 'read' -Message "want 4 bytes at $Offset, have $($Bytes.Length)")
++     }
++     # Built as [uint32] because a 32 bit box size with the high bit set is a
+@@ a four character code reads one byte early
+-         $b = $Bytes[$Offset + $i]
++         $b = $Bytes[$Offset + $i - 1]
+@@ a four character code accepts control characters
+-         if ($b -ge 32 -and $b -le 126) {
++         if ($true) {
+@@ a four character code is only three characters long
+-     for ($i = 0; $i -lt 4; $i++) {
+-         $b = $Bytes[$Offset + $i]
++     for ($i = 0; $i -lt 3; $i++) {
++         $b = $Bytes[$Offset + $i]
+@@ an already tagged error is tagged a second time
+-         if ($msg -like 'colorcheck/*') { throw $msg }
++         if ($false) { throw $msg }
+@@ a box header shorter than eight bytes is read anyway
+-     if ($Offset + 8 -gt $Limit) {
+-         throw (New-ParseError -Stage 'box' -Message "truncated box header at $Offset")
++     if ($false) {
++         throw (New-ParseError -Stage 'box' -Message "truncated box header at $Offset")
+@@ the box type is read from the size field
+-     $type = Read-FourCC -Bytes $Bytes -Offset ($Offset + 4)
+-     $header = 8
++     $type = Read-FourCC -Bytes $Bytes -Offset $Offset
++     $header = 8
+@@ a 64 bit box size is read from the wrong offset
+-         $size = Read-UInt64BE -Bytes $Bytes -Offset ($Offset + 8)
+-         $header = 16
++         $size = Read-UInt64BE -Bytes $Bytes -Offset ($Offset + 4)
++         $header = 16
+@@ a 64 bit box keeps the eight byte header length
+-         $size = Read-UInt64BE -Bytes $Bytes -Offset ($Offset + 8)
+-         $header = 16
++         $size = Read-UInt64BE -Bytes $Bytes -Offset ($Offset + 8)
++         $header = 8
+@@ a 64 bit box smaller than its own header is accepted
+-         if ($size -lt [uint64]16) {
+-             throw (New-ParseError -Stage 'box' -Message "64 bit box '$type' at $Offset declares $size bytes, below its own 16 byte header")
++         if ($false) {
++             throw (New-ParseError -Stage 'box' -Message "64 bit box '$type' at $Offset declares $size bytes, below its own 16 byte header")
+@@ an open ended box stops one byte short of the parent
+-         $size = [uint64]($Limit - $Offset)
+-         if ($size -lt [uint64]8) {
++         $size = [uint64]($Limit - $Offset - 1)
++         if ($size -lt [uint64]8) {
+@@ a box smaller than its own header is accepted
+-     } elseif ($size -lt [uint64]8) {
+-         throw (New-ParseError -Stage 'box' -Message "box '$type' at $Offset declares $size bytes, below its own 8 byte header")
++     } elseif ($false) {
++         throw (New-ParseError -Stage 'box' -Message "box '$type' at $Offset declares $size bytes, below its own 8 byte header")
+@@ a box running past its parent is accepted
+-     if ([uint64]$Offset + $size -gt [uint64]$Limit) {
++     if ($false) {
+@@ the body of a box starts at the box itself
+-         BodyOffset  = $Offset + $header
++         BodyOffset  = $Offset
+@@ the body size still counts the header
+-         BodySize    = [long]$size - $header
++         BodySize    = [long]$size
+@@ a box ends one byte early
+-         End         = $Offset + [long]$size
++         End         = $Offset + [long]$size - 1
+@@ child boxes are walked past the end of the parent
+-     while ($p + 8 -le $Limit) {
+-         $h = Read-BoxHeader -Bytes $Bytes -Offset $p -Limit $Limit
++     while ($p + 8 -le ($Limit + 64)) {
++         $h = Read-BoxHeader -Bytes $Bytes -Offset $p -Limit $Limit
+@@ walking children steps by the header instead of the box
+-         $p = $h.End
+-     }
+-     return @($out.ToArray())
++         $p = $h.Offset + $h.HeaderSize
++     }
++     return @($out.ToArray())
+@@ finding a child box matches any case
+-         if ($b.Type -ceq $Type) { return $b }
++         if ($b.Type -eq $Type) { return $b }
+@@ finding a child box returns the last one instead of the first
+-         if ($b.Type -ceq $Type) { return $b }
+-     }
+-     return $null
++         if ($b.Type -ceq $Type) { $last = $b }
++     }
++     if ($null -ne $last) { return $last }
++     return $null
+@@ collecting child boxes ignores the requested type
+-         if ($b.Type -ceq $Type) { [void]$out.Add($b) }
++         [void]$out.Add($b)
+@@ a short read is treated as a complete one
+-         $n = $Stream.Read($buf, $got, $Count - $got)
+-         if ($n -le 0) { break }
+-         $got += $n
++         $n = $Stream.Read($buf, $got, $Count - $got)
++         if ($n -le 0) { break }
++         $got = $Count
+@@ a read that came up short is returned anyway
+-     if ($got -lt $Count) {
+-         throw (New-ParseError -Stage 'read' -Message "wanted $Count bytes at $Position, got $got")
++     if ($false) {
++         throw (New-ParseError -Stage 'read' -Message "wanted $Count bytes at $Position, got $got")
+@@ a seek past the end of the file is allowed
+-     if ($Position -ge $Stream.Length) {
++     if ($false) {
+@@ a negative read count is allowed through
+-     if ($Count -lt 0) { throw (New-ParseError -Stage 'read' -Message "negative count $Count") }
++     if ($false) { throw (New-ParseError -Stage 'read' -Message "negative count $Count") }
+@@ the top level walk reads only eight bytes so no 64 bit size fits
+-         $head = Read-At -Stream $Stream -Position $pos -Count ([int][Math]::Min([long]16, $len - $pos))
++         $head = Read-At -Stream $Stream -Position $pos -Count ([int][Math]::Min([long]8, $len - $pos))
+@@ the top level size is read from the type field
+-         $size   = [uint64](Read-UInt32BE -Bytes $head -Offset 0)
+-         $type   = Read-FourCC -Bytes $head -Offset 4
++         $size   = [uint64](Read-UInt32BE -Bytes $head -Offset 4)
++         $type   = Read-FourCC -Bytes $head -Offset 4
+@@ a top level box that overruns the file is trusted
+-         if ($end -gt $len) {
++         if ($false) {
+@@ an overrunning final box is not marked truncated
+-                 BodySize = [long]($len - $pos) - $header; End = $len; Truncated = $true
++                 BodySize = [long]($len - $pos) - $header; End = $len; Truncated = $false
+@@ the top level walk never advances so it loops forever
+-         $pos = $end
+-         $seen++
++         $pos = $pos
++         $seen++
+@@ a file with thousands of top level boxes is accepted
+-         if ($seen -gt 4096) {
++         if ($false) {
+@@ a file with no boxes at all is accepted
+-     if (@($top).Count -eq 0) {
+-         throw (New-ParseError -Stage 'container' -Message "no boxes at all; not an MP4 or MOV")
++     if ($false) {
++         throw (New-ParseError -Stage 'container' -Message "no boxes at all; not an MP4 or MOV")
+@@ the brand is read from the wrong place in the ftyp box
+-         $fb = Read-At -Stream $Stream -Position $ftyp.BodyOffset -Count 4
++         $fb = Read-At -Stream $Stream -Position ($ftyp.BodyOffset + 4) -Count 4
+@@ the first box is taken as the moov box
+-     foreach ($b in $top) { if ($b.Type -ceq 'moov') { $moov = $b; break } }
++     foreach ($b in $top) { $moov = $b; break }
+@@ a file with no moov box is accepted
+-     if ($null -eq $moov) {
+-         $types = (@($top) | ForEach-Object { $_.Type }) -join ', '
++     if ($false) {
++         $types = (@($top) | ForEach-Object { $_.Type }) -join ', '
+@@ a cut off moov box is parsed anyway
+-     if ($moov.Truncated) {
+-         throw (New-ParseError -Stage 'container' -Message "the moov box is cut off; the file is incomplete")
++     if ($false) {
++         throw (New-ParseError -Stage 'container' -Message "the moov box is cut off; the file is incomplete")
+@@ an empty moov box is parsed anyway
+-     if ($moov.BodySize -le 0) {
++     if ($false) {
+@@ an absurdly large moov box is read into memory
+-     if ($moov.BodySize -gt 268435456) {
++     if ($false) {
+@@ the moov body is read from the box header
+-         Bytes      = (Read-At -Stream $Stream -Position $moov.BodyOffset -Count ([int]$moov.BodySize))
++         Bytes      = (Read-At -Stream $Stream -Position $moov.Offset -Count ([int]$moov.BodySize))
+@@ the handler type is read from the start of the hdlr body
+-     return Read-FourCC -Bytes $Bytes -Offset ($hdlr.BodyOffset + 8)
++     return Read-FourCC -Bytes $Bytes -Offset $hdlr.BodyOffset
+@@ a truncated hdlr box is read anyway
+-     if ($hdlr.BodySize -lt 12) { return $null }
++     if ($false) { return $null }
+@@ a version one track header is read as version zero
+-     if ($version -eq 1) {
+-         if ($tkhd.BodySize -lt 28) { return 0 }
++     if ($false) {
++         if ($tkhd.BodySize -lt 28) { return 0 }
+@@ the track id is read from the creation time
+-     return [long](Read-UInt32BE -Bytes $Bytes -Offset ($tkhd.BodyOffset + 12))
++     return [long](Read-UInt32BE -Bytes $Bytes -Offset ($tkhd.BodyOffset + 4))
+@@ audio tracks are analysed as video
+-         if ($handler -cne 'vide') { continue }
++         if ($false) { continue }
+@@ the sample description count is read from the version field
+-         $count = Read-UInt32BE -Bytes $Bytes -Offset ($stsd.BodyOffset + 4)
++         $count = Read-UInt32BE -Bytes $Bytes -Offset $stsd.BodyOffset
+@@ an absurd sample description count is trusted
+-         if ($count -gt 256) {
++         if ($false) {
+@@ the first sample entry starts before the stsd header
+-         $p = $stsd.BodyOffset + 8
++         $p = $stsd.BodyOffset + 4
+@@ the visual sample entry header length is off by two
+-     $w = Read-UInt16BE -Bytes $Bytes -Offset ($se.BodyOffset + 24)
++     $w = Read-UInt16BE -Bytes $Bytes -Offset ($se.BodyOffset + 26)
+@@ the frame height is read from the width field
+-                 $h = Read-UInt16BE -Bytes $Bytes -Offset ($se.BodyOffset + 26)
++                 $h = Read-UInt16BE -Bytes $Bytes -Offset ($se.BodyOffset + 24)
+@@ the bit depth is read from the wrong field
+-                 $depth = Read-UInt16BE -Bytes $Bytes -Offset ($se.BodyOffset + 74)
++                 $depth = Read-UInt16BE -Bytes $Bytes -Offset ($se.BodyOffset + 72)
+@@ child boxes are searched from the start of the sample entry
+-                     ChildOffset   = $se.BodyOffset + $script:VisualSampleEntryHeader
++                     ChildOffset   = $se.BodyOffset
+@@ the visual sample entry header constant is wrong
+- $script:VisualSampleEntryHeader = 78
++ $script:VisualSampleEntryHeader = 86
+@@ an unknown code point is reported as a known name
+-     if ($Table.ContainsKey($Code)) { return $Table[$Code] }
+-     return "unknown ($Code)"
++     if ($Table.ContainsKey($Code)) { return $Table[$Code] }
++     return "BT.709"
+@@ ordinary gamma is treated as an HDR curve
+-     return ($Transfer -eq 16 -or $Transfer -eq 18)
++     return ($Transfer -eq 16 -or $Transfer -eq 18 -or $Transfer -eq 1)
+@@ HLG is no longer recognised as HDR
+-     return ($Transfer -eq 16 -or $Transfer -eq 18)
++     return ($Transfer -eq 16)
+@@ a truncated colour box is parsed anyway
+-     if ($Box.BodySize -lt 4) {
+-         throw (New-ParseError -Stage 'colr' -Message "colr box holds only $($Box.BodySize) bytes")
++     if ($false) {
++         throw (New-ParseError -Stage 'colr' -Message "colr box holds only $($Box.BodySize) bytes")
+@@ a colour box ten bytes short is parsed anyway
+-         if ($Box.BodySize -lt 10) {
+-             throw (New-ParseError -Stage 'colr' -Message "'$kind' colr box needs 10 bytes, has $($Box.BodySize)")
++         if ($false) {
++             throw (New-ParseError -Stage 'colr' -Message "'$kind' colr box needs 10 bytes, has $($Box.BodySize)")
+@@ the colour primaries are read from the kind field
+-         $prim = Read-UInt16BE -Bytes $Bytes -Offset ($Box.BodyOffset + 4)
++         $prim = Read-UInt16BE -Bytes $Bytes -Offset ($Box.BodyOffset + 2)
+@@ the transfer curve and the matrix are swapped
+-         $tran = Read-UInt16BE -Bytes $Bytes -Offset ($Box.BodyOffset + 6)
+-         $matx = Read-UInt16BE -Bytes $Bytes -Offset ($Box.BodyOffset + 8)
++         $tran = Read-UInt16BE -Bytes $Bytes -Offset ($Box.BodyOffset + 8)
++         $matx = Read-UInt16BE -Bytes $Bytes -Offset ($Box.BodyOffset + 6)
+@@ an nclc box is given a range it cannot carry
+-         if ($kind -ceq 'nclx') {
+-             if ($Box.BodySize -lt 11) {
++         if ($true) {
++             if ($Box.BodySize -lt 11) {
+@@ the range flag is read from the matrix byte
+-             $rangeByte = $Bytes[$Box.BodyOffset + 10]
++             $rangeByte = $Bytes[$Box.BodyOffset + 9]
+@@ the range flag tests the wrong bit
+-             $full = (($rangeByte -band 0x80) -ne 0)
++             $full = (($rangeByte -band 0x40) -ne 0)
+@@ an nclx box with no range byte is accepted
+-             if ($Box.BodySize -lt 11) {
+-                 throw (New-ParseError -Stage 'colr' -Message "'nclx' colr box is missing its range byte")
++             if ($false) {
++                 throw (New-ParseError -Stage 'colr' -Message "'nclx' colr box is missing its range byte")
+@@ an ICC profile is reported with the header bytes counted
+-         IccBytes   = [int]($Box.BodySize - 4)
++         IccBytes   = [int]$Box.BodySize
+@@ an unrecognised colour type is accepted silently
+-     throw (New-ParseError -Stage 'colr' -Message "unrecognised colour type '$kind'")
++     return $null
+@@ a truncated pixel aspect box is parsed anyway
+-     if ($Box.BodySize -lt 8) {
+-         throw (New-ParseError -Stage 'pasp' -Message "pasp box holds only $($Box.BodySize) bytes")
++     if ($false) {
++         throw (New-ParseError -Stage 'pasp' -Message "pasp box holds only $($Box.BodySize) bytes")
+@@ the vertical pixel spacing is read from the horizontal one
+-     $v = Read-UInt32BE -Bytes $Bytes -Offset ($Box.BodyOffset + 4)
++     $v = Read-UInt32BE -Bytes $Bytes -Offset $Box.BodyOffset
+@@ emulation prevention bytes are left in the stream
+-         if ($zeros -ge 2 -and $b -eq 3) {
++         if ($false) {
+@@ the zero run is not reset after an escape is removed
+-             $zeros = 0
+-             continue
++             continue
+@@ the zero run counts any byte
+-         if ($b -eq 0) { $zeros++ } else { $zeros = 0 }
++         $zeros++
+@@ an escape is removed after only one zero byte
+-         if ($zeros -ge 2 -and $b -eq 3) {
++         if ($zeros -ge 1 -and $b -eq 3) {
+@@ the bit reader thinks the buffer is eight times longer
+-         TotalBits = $Bytes.Length * 8
++         TotalBits = $Bytes.Length * 64
+@@ the bit reader divides rather than shifts so it rounds to nearest
+-     $byte = $Reader.Bytes[($Reader.BitPos -shr 3)]
++     $byte = $Reader.Bytes[[int]($Reader.BitPos / 8)]
+@@ bits come out of the byte in the wrong order
+-     $shift = 7 - ($Reader.BitPos -band 7)
++     $shift = ($Reader.BitPos -band 7)
+@@ the bit reader runs off the end of the parameter set
+-     if ($Reader.BitPos -ge $Reader.TotalBits) {
+-         throw (New-ParseError -Stage 'sps' -Message "ran off the end of the parameter set after $($Reader.BitPos) bits")
++     if ($false) {
++         throw (New-ParseError -Stage 'sps' -Message "ran off the end of the parameter set after $($Reader.BitPos) bits")
+@@ reading several bits shifts the wrong way
+-         $v = ($v -shl 1) -bor [uint32](Read-Bit -Reader $Reader)
++         $v = ($v -shr 1) -bor [uint32](Read-Bit -Reader $Reader)
+@@ a zero bit count consumes a bit anyway
+-     if ($Count -eq 0) { return 0 }
++     if ($Count -eq 0) { return (Read-Bit -Reader $Reader) }
+@@ skipping bits runs past the end of the parameter set
+-     if ($Reader.BitPos + $Count -gt $Reader.TotalBits) {
+-         throw (New-ParseError -Stage 'sps' -Message "skipping $Count bits runs past the end of the parameter set")
++     if ($false) {
++         throw (New-ParseError -Stage 'sps' -Message "skipping $Count bits runs past the end of the parameter set")
+@@ an exp-Golomb code is off by one
+-     return [long]((([long]1 -shl $leadingZeros) - 1) + $suffix)
++     return [long](([long]1 -shl $leadingZeros) + $suffix)
+@@ an exp-Golomb code ignores its suffix
+-     $suffix = Read-Bits -Reader $Reader -Count $leadingZeros
+-     return [long]((([long]1 -shl $leadingZeros) - 1) + $suffix)
++     $suffix = Read-Bits -Reader $Reader -Count $leadingZeros
++     return [long](([long]1 -shl $leadingZeros) - 1)
+@@ an unaligned stream is read forever instead of reported
+-         if ($leadingZeros -gt 32) {
++         if ($false) {
+@@ a signed exp-Golomb code has its sign backwards
+-         return [long](-1 * ($k / 2))
++         return [long]($k / 2)
+@@ a signed exp-Golomb code rounds the wrong way
+-     return [long](($k + 1) / 2)
++     return [long]($k / 2)
+@@ a stream with no VUI block is reported as carrying colour
+-         Present     = $false
+-         Block       = $false
++         Present     = $true
++         Block       = $false
+@@ the aspect ratio extension is read even when the flag says no
+-     if ($aspectPresent -eq 1) {
+-         $aspectIdc = Read-Bits -Reader $Reader -Count 8
++     if ($true) {
++         $aspectIdc = Read-Bits -Reader $Reader -Count 8
+@@ the extended sample aspect ratio is not read when it should be
+-         if ($aspectIdc -eq 255) {
++         if ($false) {
+@@ the overscan flag is skipped so every later field shifts
+-     $overscanPresent = Read-Bit -Reader $Reader
+-     $overscan = $null
++     $overscanPresent = 0
++     $overscan = $null
+@@ a VUI block with no signal type is reported as having one
+-     if ($signalPresent -ne 1) {
++     if ($false) {
+@@ the video format field is the wrong width so range shifts
+-     $videoFormat = Read-Bits -Reader $Reader -Count 3
++     $videoFormat = Read-Bits -Reader $Reader -Count 4
+@@ the full range flag is inverted
+-     $fullRange   = ((Read-Bit -Reader $Reader) -eq 1)
++     $fullRange   = ((Read-Bit -Reader $Reader) -eq 0)
+@@ the colour description is read even when it is absent
+-     if ($colourPresent -eq 1) {
+-         $prim = Read-Bits -Reader $Reader -Count 8
++     if ($true) {
++         $prim = Read-Bits -Reader $Reader -Count 8
+@@ the stream transfer curve and matrix are swapped
+-         $tran = Read-Bits -Reader $Reader -Count 8
+-         $matx = Read-Bits -Reader $Reader -Count 8
++         $matx = Read-Bits -Reader $Reader -Count 8
++         $tran = Read-Bits -Reader $Reader -Count 8
+@@ a NAL unit that is not a parameter set is parsed as one
+-         if ($nalType -ne 7) {
++         if ($false) {
+@@ the NAL header mask takes too many bits
+-         $nalType = [int]$Nal[0] -band 0x1F
++         $nalType = [int]$Nal[0] -band 0x3F
+@@ the NAL header byte is parsed as part of the payload
+-         $rbsp = Remove-EmulationPrevention -Bytes $Nal[1..($Nal.Length - 1)]
++         $rbsp = Remove-EmulationPrevention -Bytes $Nal
+@@ a high profile stream skips its chroma fields
+-         if ($script:AvcHighProfiles -contains [int]$profileIdc) {
++         if ($false) {
+@@ the bit depth is reported eight too low
+-             $bitDepthLuma = [int](Read-Ue -Reader $r) + 8
++             $bitDepthLuma = [int](Read-Ue -Reader $r)
+@@ the scaling matrix is skipped so the frame size shifts
+-             $scalingPresent = Read-Bit -Reader $r
+-             if ($scalingPresent -eq 1) {
++             $scalingPresent = 0
++             if ($scalingPresent -eq 1) {
+@@ chroma format three does not consume its extra flag
+-             if ($chromaFormat -eq 3) { [void](Read-Bit -Reader $r) }  # separate_colour_plane_flag
++             if ($false) { [void](Read-Bit -Reader $r) }  # separate_colour_plane_flag
+@@ the picture order count cycle is not consumed
+-             for ($i = 0; $i -lt $cycle; $i++) { [void](Read-Se -Reader $r) }
++             for ($i = 0; $i -lt 0; $i++) { [void](Read-Se -Reader $r) }
+@@ an undefined picture order count type is accepted
+-         } elseif ($pocType -ne 2) {
++         } elseif ($false) {
+@@ the frame width forgets its plus one
+-         $widthMbs   = [int](Read-Ue -Reader $r) + 1
++         $widthMbs   = [int](Read-Ue -Reader $r)
+@@ the frame width is counted in pixels not macroblocks
+-         $width  = ($widthMbs * 16) - ($subWidthC * ($cropLeft + $cropRight))
++         $width  = $widthMbs - ($subWidthC * ($cropLeft + $cropRight))
+@@ the crop offsets are ignored so 1080p is reported as 1088
+-         $height = ($heightUnits * 16 * $heightMult) - ($subHeightC * $heightMult * ($cropTop + $cropBottom))
++         $height = ($heightUnits * 16 * $heightMult)
+@@ chroma subsampling does not double the crop offsets
+-         $subWidthC  = $(if ($chromaFormat -eq 3) { 1 } elseif ($chromaFormat -eq 0) { 1 } else { 2 })
++         $subWidthC  = 1
+@@ an interlaced stream is measured as progressive
+-         $heightMult = $(if ($frameMbsOnly -eq 1) { 1 } else { 2 })
++         $heightMult = 1
+@@ the VUI present flag is ignored so colour is invented
+-         [void](Read-Bit -Reader $r)  # strong_intra_smoothing_enabled_flag
+-
+-         $vui = New-AbsentVui
+-         if ((Read-Bit -Reader $r) -eq 1) {
++         [void](Read-Bit -Reader $r)  # strong_intra_smoothing_enabled_flag
++
++         $vui = New-AbsentVui
++         if ($true) {
+@@ the container and the stream matrix are never compared
+-         if ($colr.Matrix -ne $vui.Matrix) {
++         if ($false) {
+@@ the primaries comparison reads the matrix instead
+-         if ($colr.Primaries -ne $vui.Primaries) {
++         if ($colr.Primaries -ne $vui.Matrix) {
+@@ a transfer curve conflict is never reported
+-         if ($colr.Transfer -ne $vui.Transfer) {
++         if ($false) {
+@@ a range conflict is never reported
+-         if ($colr.FullRange -ne $vui.FullRange) {
++         if ($false) {
+@@ a file with no colour tags at all is reported as fine
+-     if (-not $colrHasCodes -and -not $vuiHasColour) {
++     if ($false) {
+@@ an unspecified matrix is treated as a real one
+-     } elseif ($null -ne $effMatrix -and $effMatrix -eq 2) {
++     } elseif ($false) {
+@@ a missing colour box is never mentioned
+-     if (-not $colrHasCodes -and $vuiHasColour) {
++     if ($false) {
+@@ a missing stream description is never mentioned
+-     if ($colrHasCodes -and -not $vuiHasColour) {
++     if ($false) {
+@@ standard definition is the fallback at every frame height
+-     if ($Height -le 576) { return 6 }
+-     return 1
++     if ($Height -le 576) { return 6 }
++     return 6
+@@ the standard definition cutoff is one line too low
+-     if ($Height -le 576) { return 6 }
++     if ($Height -le 480) { return 6 }
+@@ a zero height picks a real matrix instead of none
+-     if ($Height -le 0)   { return 0 }
++     if ($Height -le 0)   { return 1 }
+@@ an unknown range is described as limited
+-     if ($null -eq $FullRange) { return 'unknown' }
++     if ($null -eq $FullRange) { return 'limited (16-235)' }
+@@ full and limited range are described the wrong way round
+-     if ($FullRange) { return 'full (0-255)' }
+-     return 'limited (16-235)'
++     if ($FullRange) { return 'limited (16-235)' }
++     return 'full (0-255)'
+@@ high definition footage tagged BT.601 is not reported
+-         if (($matrix -eq 5 -or $matrix -eq 6) -and $expected -eq 1) {
++         if ($false) {
+@@ only one of the two standard definition matrices is caught
+-         if (($matrix -eq 5 -or $matrix -eq 6) -and $expected -eq 1) {
++         if (($matrix -eq 5) -and $expected -eq 1) {
+@@ standard definition tagged BT.709 is not mentioned
+-         } elseif ($matrix -eq 1 -and $expected -eq 6) {
++         } elseif ($false) {
+@@ an RGB tagged file is not mentioned
+-     if ($null -ne $matrix -and $matrix -eq 0) {
++     if ($false) {
+@@ full range is never flagged
+-     if ($null -ne $fullRange -and $fullRange -eq $true) {
++     if ($false) {
+@@ the older QuickTime colour box is not mentioned
+-     if ($null -ne $colr -and $colr.Kind -ceq 'nclc') {
++     if ($false) {
+@@ an embedded ICC profile is not mentioned
+-     if ($null -ne $colr -and ($colr.Kind -ceq 'rICC' -or $colr.Kind -ceq 'prof')) {
++     if ($false) {
+@@ HDR on narrow primaries is not reported
+-         if ($null -ne $primaries -and $primaries -ne 9) {
++         if ($false) {
+@@ missing mastering metadata on HDR is not reported
+-         if (-not $Track.HasMasteringDisplay) {
++         if ($false) {
+@@ wide gamut with an ordinary curve is not reported
+-     } elseif ($null -ne $primaries -and $primaries -eq 9 -and $null -ne $transfer -and $transfer -eq 1) {
++     } elseif ($false) {
+@@ mastering metadata on a file that is not HDR is not mentioned
+-     if ($null -ne $Track.HasMasteringDisplay -and $Track.HasMasteringDisplay -and
++     if ($false -and $Track.HasMasteringDisplay -and
+@@ a zero pixel spacing is treated as merely non square
+-         if ($Track.Pasp.HSpacing -le 0 -or $Track.Pasp.VSpacing -le 0) {
++         if ($false) {
+@@ non square pixels are never reported
+-         } elseif ($Track.Pasp.HSpacing -ne $Track.Pasp.VSpacing) {
++         } elseif ($false) {
+@@ a frame size disagreement is never reported
+-         if ($Track.Bitstream.Width -ne $Track.Width -or $Track.Bitstream.Height -ne $Track.Height) {
++         if ($false) {
+@@ the container no longer wins over the stream
+-     if ($null -ne $Track.Colr) {
+-         if ($null -ne $Track.Colr.Primaries) {
+-             $matrix = $Track.Colr.Matrix; $primaries = $Track.Colr.Primaries; $transfer = $Track.Colr.Transfer
++     if ($null -ne $Track.Colr) {
++         if ($false) {
++             $matrix = $Track.Colr.Matrix; $primaries = $Track.Colr.Primaries; $transfer = $Track.Colr.Transfer
+@@ the container range is ignored in the effective tags
+-         if ($null -ne $Track.Colr.FullRange) {
+-             $fullRange = $Track.Colr.FullRange
+-             if ($source -eq 'nothing') { $source = 'container' }
++         if ($false) {
++             $fullRange = $Track.Colr.FullRange
++             if ($source -eq 'nothing') { $source = 'container' }
+@@ tags found in both places are credited to the container alone
+-             $source = $(if ($source -eq 'bitstream') { 'both' } else { 'container' })
++             $source = 'container'
+@@ warnings are counted as problems
+-             if ($f.Severity -eq 'problem') { $problems++ }
+-             elseif ($f.Severity -eq 'warning') { $warnings++ }
++             if ($f.Severity -eq 'problem') { $problems++ }
++             elseif ($f.Severity -eq 'warning') { $problems++ }
+@@ notes are counted as warnings
+-             else { $notes++ }
++             else { $warnings++ }
+@@ a file with problems is still called consistent
+-     if ($problems -gt 0) { $label = 'conflict' }
+-     elseif ($warnings -gt 0) { $label = 'check this' }
++     if ($false) { $label = 'conflict' }
++     elseif ($warnings -gt 0) { $label = 'check this' }
+@@ warnings no longer ask the reader to look
+-     elseif ($warnings -gt 0) { $label = 'check this' }
++     elseif ($false) { $label = 'check this' }
+@@ a file with no video track is accepted
+-     if (@($entries).Count -eq 0) {
+-         throw (New-ParseError -Stage 'container' -Message "no video track; this file has nothing to check")
++     if ($false) {
++         throw (New-ParseError -Stage 'container' -Message "no video track; this file has nothing to check")
+@@ an unreadable file still exits zero
+-     if ($readOk -eq 0) { $script:ExitCode = 2; return }
++     if ($false) { $script:ExitCode = 2; return }
+@@ a file with problems still exits zero
+-     if ($problems -gt 0) { $script:ExitCode = 1; return }
++     if ($false) { $script:ExitCode = 1; return }
+@@ a folder that matched nothing exits zero
+-         $script:ExitCode = 2
+-         return
+-     }
++         $script:ExitCode = 0
++         return
++     }
+@@ a tool bug is filed as a bad file instead of being raised
+-             if ($m -like 'colorcheck/*') {
++             if ($true) {
+@@ the JSON is truncated at the default depth
+-             Write-Output (ConvertTo-Json -InputObject $out[0] -Depth 8)
++             Write-Output (ConvertTo-Json -InputObject $out[0] -Depth 2)
+@@ a single report is emitted as a bare object inside an array
+-         if (@($out).Count -eq 1) {
++         if ($false) {
+@@ quiet mode hides files that have problems
+-             if ($Quiet -and $r.Verdict.Problems -eq 0 -and $r.Verdict.Warnings -eq 0) { continue }
+-             $out += (ConvertTo-ReportObject -Report $r)
++             if ($Quiet) { continue }
++             $out += (ConvertTo-ReportObject -Report $r)
+@@ a folder listing comes back in filesystem order
+-         return @(@($items.ToArray()) | Sort-Object)
+-     }
+-
+-     if (Test-Path -LiteralPath $InputPath -PathType Leaf) {
++         return @($items.ToArray())
++     }
++
++     if (Test-Path -LiteralPath $InputPath -PathType Leaf) {
+@@ every file in a folder is treated as a recording
+-             if ($script:VideoExtensions -notcontains $ext.ToLowerInvariant()) { continue }
++             if ($false) { continue }
+@@ the name filter is ignored
+-                 if ($f.Name -notlike $NameFilter) { continue }
++                 if ($false) { continue }
+@@ a folder is always searched recursively
+-         if ($Recurse) { $opts['Recurse'] = $true }
++         $opts['Recurse'] = $true
+@@ the no colour environment variable is ignored
+-     if ($null -ne $env:NO_COLOR -and $env:NO_COLOR -ne '') { $script:NoColorOutput = $true }
++     if ($false) { $script:NoColorOutput = $true }
+@@! tripwire: a comment about byte order is reworded
+- # The whole ISO base media file format is big endian. PowerShell's
++ # reworded by the mutation harness; this line is never executed
+@@! tripwire: a comment about the sample entry header is reworded
+- # Getting this constant wrong is the classic way to "find" a colr box that is
++ # reworded by the mutation harness; this line is never executed either
+@@! tripwire: the string builder in the four character code reader is renamed
+-     $sb = New-Object System.Text.StringBuilder
+-     for ($i = 0; $i -lt 4; $i++) {
+-         $b = $Bytes[$Offset + $i]
+-         # A four character code is nominally printable ASCII. Anything outside
+-         # that range is shown as a dot so a corrupt header cannot inject
+-         # control characters into the terminal.
+-         if ($b -ge 32 -and $b -le 126) {
+-             [void]$sb.Append([char]$b)
+-         } else {
+-             [void]$sb.Append('.')
+-         }
+-     }
+-     return $sb.ToString()
++     $renamedByHarness = New-Object System.Text.StringBuilder
++     for ($i = 0; $i -lt 4; $i++) {
++         $b = $Bytes[$Offset + $i]
++         # A four character code is nominally printable ASCII. Anything outside
++         # that range is shown as a dot so a corrupt header cannot inject
++         # control characters into the terminal.
++         if ($b -ge 32 -and $b -le 126) {
++             [void]$renamedByHarness.Append([char]$b)
++         } else {
++             [void]$renamedByHarness.Append('.')
++         }
++     }
++     return $renamedByHarness.ToString()
+@@! tripwire: an unused local is introduced in the verdict
+-     $problems = 0
+-     $warnings = 0
++     $problems = 0
++     $unusedByHarness = 0
++     $warnings = 0
+@@! tripwire: the comment above the bit reader is reworded
+-     # -shr 3 rather than [int]($BitPos / 8): PowerShell's [int] cast rounds to
++     # reworded by the mutation harness; this comment is never executed
+@@ the matrix conflict names the container and the stream the wrong way round
+-                 -Detail ("The colr box says " + (Get-CodeName -Table $script:MatrixNames -Code $colr.Matrix) +
+-                          " and the bitstream says " + (Get-CodeName -Table $script:MatrixNames -Code $vui.Matrix) +
++                 -Detail ("The colr box says " + (Get-CodeName -Table $script:MatrixNames -Code $vui.Matrix) +
++                          " and the bitstream says " + (Get-CodeName -Table $script:MatrixNames -Code $colr.Matrix) +
+@@ the primaries conflict names the container and the stream the wrong way round
+-                 -Detail ("The colr box says " + (Get-CodeName -Table $script:PrimariesNames -Code $colr.Primaries) +
+-                          " and the bitstream says " + (Get-CodeName -Table $script:PrimariesNames -Code $vui.Primaries) + ".") `
++                 -Detail ("The colr box says " + (Get-CodeName -Table $script:PrimariesNames -Code $vui.Primaries) +
++                          " and the bitstream says " + (Get-CodeName -Table $script:PrimariesNames -Code $colr.Primaries) + ".") `
+@@ the transfer conflict names the container and the stream the wrong way round
+-                 -Detail ("The colr box says " + (Get-CodeName -Table $script:TransferNames -Code $colr.Transfer) +
+-                          " and the bitstream says " + (Get-CodeName -Table $script:TransferNames -Code $vui.Transfer) +
++                 -Detail ("The colr box says " + (Get-CodeName -Table $script:TransferNames -Code $vui.Transfer) +
++                          " and the bitstream says " + (Get-CodeName -Table $script:TransferNames -Code $colr.Transfer) +
+@@ the range conflict names the container and the stream the wrong way round
+-                 -Detail ("The colr box says " + (Get-RangeWord $colr.FullRange) + " and the bitstream says " +
+-                          (Get-RangeWord $vui.FullRange) +
++                 -Detail ("The colr box says " + (Get-RangeWord $vui.FullRange) + " and the bitstream says " +
++                          (Get-RangeWord $colr.FullRange) +
+@@ the size conflict names the sample entry and the bitstream the wrong way round
+-                 -Detail ("The sample entry says " + $Track.Width + "x" + $Track.Height + " and the bitstream says " +
+-                          $Track.Bitstream.Width + "x" + $Track.Bitstream.Height +
++                 -Detail ("The sample entry says " + $Track.Bitstream.Width + "x" + $Track.Bitstream.Height + " and the bitstream says " +
++                          $Track.Width + "x" + $Track.Height +
+@@ the standard definition matrix finding prints the frame size as height by width
+-                 -Detail ("This is " + $Track.Width + "x" + $height + " but the matrix is " +
++                 -Detail ("This is " + $height + "x" + $Track.Width + " but the matrix is " +
+@@ the high definition matrix finding prints the frame size as height by width
+-                 -Detail ("This is " + $Track.Width + "x" + $height + " tagged BT.709. It may well be correct, but the fallback " +
++                 -Detail ("This is " + $height + "x" + $Track.Width + " tagged BT.709. It may well be correct, but the fallback " +
+@@ the icc profile size counts the four byte colour type as profile data
+-             -Detail ("The colr box carries a " + $colr.IccBytes + " byte ICC profile. That is legal and precise, and most " +
++             -Detail ("The colr box carries a " + ($colr.IccBytes + 4) + " byte ICC profile. That is legal and precise, and most " +
+@@ the invalid pasp finding prints the spacings the wrong way round
+-                 -Detail ("pasp says " + $Track.Pasp.HSpacing + ":" + $Track.Pasp.VSpacing +
+-                          ". A zero spacing is meaningless and different players round it differently.") `
++                 -Detail ("pasp says " + $Track.Pasp.VSpacing + ":" + $Track.Pasp.HSpacing +
++                          ". A zero spacing is meaningless and different players round it differently.") `
+@@ the non square pasp finding prints the spacings the wrong way round
+-                 -Detail ("pasp says " + $Track.Pasp.HSpacing + ":" + $Track.Pasp.VSpacing +
+-                          ", so the picture is meant to be stretched on playback. Tools that ignore pasp will show it at the " +
++                 -Detail ("pasp says " + $Track.Pasp.VSpacing + ":" + $Track.Pasp.HSpacing +
++                          ", so the picture is meant to be stretched on playback. Tools that ignore pasp will show it at the " +
+@@ the narrow gamut hdr finding names the transfer and the primaries the wrong way round
+-                 -Detail ("The transfer is " + (Get-CodeName -Table $script:TransferNames -Code $transfer) +
+-                          " but the primaries are " + (Get-CodeName -Table $script:PrimariesNames -Code $primaries) +
++                 -Detail ("The transfer is " + (Get-CodeName -Table $script:PrimariesNames -Code $primaries) +
++                          " but the primaries are " + (Get-CodeName -Table $script:TransferNames -Code $transfer) +

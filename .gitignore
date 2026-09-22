@@ -1,0 +1,9 @@
+# Build and run artefacts. None of this belongs in the repository.
+*.mutbak
+mutate.progress
+.mutate-in-progress
+gate.stamp
+greenrounds.log
+greenrounds.status
+round*.part*.log
+round*.part*.err
