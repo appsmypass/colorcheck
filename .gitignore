@@ -8,3 +8,4 @@ greenrounds.status
 round*.part*.log
 round*.part*.err
 gate.verified
+*.mp4
